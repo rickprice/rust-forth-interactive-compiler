@@ -13,4 +13,3 @@ categories = ["embedded"]
 
 [dependencies]
 rust-forth-compiler = "0.3.1"
-rustyline = "5.0.2"
