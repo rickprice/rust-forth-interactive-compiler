@@ -7,6 +7,15 @@ use rustyline::error::ReadlineError;
 use rustyline::Editor;
 use std::fs;
 
+/// This Enum lists the errors that the Forth Interpreter might return
+#[derive(Debug)]
+pub enum ForthInteractiveError {
+    UnknownError,
+    ForthError(ForthError),
+    IOError(std::io::Error),
+    ParseIntError(std::num::ParseIntError),
+}
+
 pub enum CommandHandled {
     Handled,
     NotHandled,
@@ -19,7 +28,7 @@ pub trait HandleCommand {
         command_id: &str,
         parameters: &[&str],
         fc: &mut ForthCompiler,
-    ) -> Result<CommandHandled, ForthError>;
+    ) -> Result<CommandHandled, ForthInteractiveError>;
     fn command_id(&self) -> String;
     fn help_text(&self) -> String;
 }
@@ -27,14 +36,17 @@ pub trait HandleCommand {
 pub struct CommandHandler<'a> {
     command_id: String,
     help_text: String,
-    to_run:
-        Box<dyn Fn(&str, &[&str], &mut ForthCompiler) -> Result<CommandHandled, ForthError> + 'a>,
+    to_run: Box<
+        dyn Fn(&str, &[&str], &mut ForthCompiler) -> Result<CommandHandled, ForthInteractiveError>
+            + 'a,
+    >,
 }
 
 impl<'a> CommandHandler<'a> {
     pub fn new<C>(command_id: &str, help_text: &str, f: C) -> CommandHandler<'a>
     where
-        C: Fn(&str, &[&str], &mut ForthCompiler) -> Result<CommandHandled, ForthError> + 'a,
+        C: Fn(&str, &[&str], &mut ForthCompiler) -> Result<CommandHandled, ForthInteractiveError>
+            + 'a,
     {
         CommandHandler {
             command_id: command_id.to_owned(),
@@ -50,7 +62,7 @@ impl<'a> HandleCommand for CommandHandler<'a> {
         command_id: &str,
         parameters: &[&str],
         fc: &mut ForthCompiler,
-    ) -> Result<CommandHandled, ForthError> {
+    ) -> Result<CommandHandled, ForthInteractiveError> {
         if command_id == self.command_id {
             return (self.to_run)(self.command_id.as_ref(), parameters, fc);
         }
@@ -63,6 +75,30 @@ impl<'a> HandleCommand for CommandHandler<'a> {
 
     fn help_text(&self) -> String {
         self.help_text.clone()
+    }
+}
+
+/// Convert std::num::ParseIntError to a ForthInteractiveError so our functions can
+/// return a single Error type.
+impl From<std::num::ParseIntError> for ForthInteractiveError {
+    fn from(err: std::num::ParseIntError) -> ForthInteractiveError {
+        ForthInteractiveError::ParseIntError(err)
+    }
+}
+
+/// Convert std::num::ParseIntError to a ForthInteractiveError so our functions can
+/// return a single Error type.
+impl From<ForthError> for ForthInteractiveError {
+    fn from(err: ForthError) -> ForthInteractiveError {
+        ForthInteractiveError::ForthError(err)
+    }
+}
+
+/// Convert std::io::Error to a ForthInteractiveError so our functions can
+/// return a single Error type.
+impl From<std::io::Error> for ForthInteractiveError {
+    fn from(err: std::io::Error) -> ForthInteractiveError {
+        ForthInteractiveError::IOError(err)
     }
 }
 
@@ -85,10 +121,21 @@ fn main() -> Result<(), ForthError> {
     )));
 
     command_handlers.push(Box::from(CommandHandler::new(
-        "p",
+        "n",
         "Print number stack: No Parameters",
         |_command_id, _params, fc| {
             println!("Number Stack {:?}", fc.sm.st.number_stack);
+            Ok(CommandHandled::Handled)
+        },
+    )));
+
+    command_handlers.push(Box::from(CommandHandler::new(
+        "p",
+        "Push numbers on stack: n1 [n2]",
+        |_command_id, params, fc| {
+            for n in params {
+                fc.sm.st.number_stack.push(n.parse::<i64>()?);
+            }
             Ok(CommandHandled::Handled)
         },
     )));
