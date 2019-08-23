@@ -30,11 +30,13 @@ pub trait HandleCommand {
         fc: &mut ForthCompiler,
     ) -> Result<CommandHandled, ForthInteractiveError>;
     fn command_id(&self) -> String;
+    fn usage_text(&self) -> String;
     fn help_text(&self) -> String;
 }
 
 pub struct CommandHandler<'a> {
     command_id: String,
+    usage_text: String,
     help_text: String,
     to_run: Box<
         dyn Fn(&str, &[&str], &mut ForthCompiler) -> Result<CommandHandled, ForthInteractiveError>
@@ -43,13 +45,14 @@ pub struct CommandHandler<'a> {
 }
 
 impl<'a> CommandHandler<'a> {
-    pub fn new<C>(command_id: &str, help_text: &str, f: C) -> CommandHandler<'a>
+    pub fn new<C>(command_id: &str, usage_text: &str, help_text: &str, f: C) -> CommandHandler<'a>
     where
         C: Fn(&str, &[&str], &mut ForthCompiler) -> Result<CommandHandled, ForthInteractiveError>
             + 'a,
     {
         CommandHandler {
             command_id: command_id.to_owned(),
+            usage_text: usage_text.to_owned(),
             help_text: help_text.to_owned(),
             to_run: Box::new(f),
         }
@@ -71,6 +74,10 @@ impl<'a> HandleCommand for CommandHandler<'a> {
 
     fn command_id(&self) -> String {
         self.command_id.clone()
+    }
+
+    fn usage_text(&self) -> String {
+        self.usage_text.clone()
     }
 
     fn help_text(&self) -> String {
@@ -110,7 +117,8 @@ fn main() -> Result<(), ForthError> {
     let mut command_handlers: Vec<Box<dyn HandleCommand>> = Vec::new();
     command_handlers.push(Box::from(CommandHandler::new(
         "l",
-        "Load Forth file: file1.f [file2.f]",
+        "file1.fs [file2.fs]",
+        "Load Forth file",
         |_command_id, params, fc| {
             for n in params {
                 let startup = fs::read_to_string(n)?;
@@ -122,7 +130,8 @@ fn main() -> Result<(), ForthError> {
 
     command_handlers.push(Box::from(CommandHandler::new(
         "n",
-        "Print number stack: No Parameters",
+        "No Parameters",
+        "Print number stack",
         |_command_id, _params, fc| {
             println!("Number Stack {:?}", fc.sm.st.number_stack);
             Ok(CommandHandled::Handled)
@@ -131,7 +140,8 @@ fn main() -> Result<(), ForthError> {
 
     command_handlers.push(Box::from(CommandHandler::new(
         "p",
-        "Push numbers on stack: n1 [n2]",
+        "n1 [n2]",
+        "Push numbers on stack",
         |_command_id, params, fc| {
             for n in params {
                 fc.sm.st.number_stack.push(n.parse::<i64>()?);
@@ -165,17 +175,30 @@ fn main() -> Result<(), ForthError> {
                 // Try to handle the command here
                 let mut handled = false;
                 for h in command_handlers.iter_mut() {
-                    if let Ok(CommandHandled::Handled) =
-                        h.handle_command(command, parameters, &mut fc)
-                    {
-                        handled = true;
+                    match h.handle_command(command, parameters, &mut fc) {
+                        Ok(CommandHandled::Handled) => {
+                            handled = true;
+                        }
+                        Ok(CommandHandled::NotHandled) => (),
+                        Err(err) => {
+                            println!();
+                            println!();
+                            println!("Error executing command: {:?}", err);
+                            println!();
+                            println!();
+                        }
                     }
                 }
 
                 if !handled {
                     println!("Help text:");
                     for h in command_handlers.iter() {
-                        println!("    Command: {} Usage: {}", h.command_id(), h.help_text());
+                        println!(
+                            "    Help: {} Command: {} {}",
+                            h.help_text(),
+                            h.command_id(),
+                            h.usage_text()
+                        );
                     }
                 }
             }
