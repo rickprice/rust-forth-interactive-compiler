@@ -161,6 +161,41 @@ fn main() -> Result<(), ForthError> {
         },
     )));
 
+    command_handlers.push(Box::from(CommandHandler::new(
+        "list_words",
+        "No parameters",
+        "List OpCodes that are compiled into memory",
+        |_command_id, _params, _fc| {
+            /*
+            for (key, value) in fc.word_addresses {
+                println!("Word: {} Location: {}", key, value);
+            }
+            */
+            //println!("Last compiled Opcode {:?}", fc.last_function);
+            Ok(CommandHandled::Handled)
+        },
+    )));
+
+    command_handlers.push(Box::from(CommandHandler::new(
+        "list_compiled_opcodes",
+        "No parameters",
+        "Show the opcodes that are compiled into memory",
+        |_command_id, _params, fc| {
+            println!("Compiled Opcodes {:?}", fc.sm.st.opcodes);
+            //println!("Last compiled Opcode {:?}", fc.last_function);
+            Ok(CommandHandled::Handled)
+        },
+    )));
+
+    command_handlers.push(Box::from(CommandHandler::new(
+        "clear_number_stack",
+        "No parameters",
+        "Remove all numbers from number stack",
+        |_command_id, _params, fc| {
+            fc.sm.st.number_stack.truncate(0);
+            Ok(CommandHandled::Handled)
+        },
+    )));
     // `()` can be used when no completer is required
     let mut rl = Editor::<()>::new();
     if rl.load_history("history.txt").is_err() {
