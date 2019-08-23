@@ -115,6 +115,7 @@ fn main() -> Result<(), ForthError> {
     let mut fc = ForthCompiler::new();
 
     let mut command_handlers: Vec<Box<dyn HandleCommand>> = Vec::new();
+
     command_handlers.push(Box::from(CommandHandler::new(
         "l",
         "file1.fs [file2.fs]",
@@ -146,6 +147,16 @@ fn main() -> Result<(), ForthError> {
             for n in params {
                 fc.sm.st.number_stack.push(n.parse::<i64>()?);
             }
+            Ok(CommandHandled::Handled)
+        },
+    )));
+
+    command_handlers.push(Box::from(CommandHandler::new(
+        "i",
+        "Enter interactive Forth text",
+        "Enter interactive Forth text",
+        |_command_id, _params, fc| {
+            fc.execute_string(&enter_interactive_text(), GasLimit::Limited(100))?;
             Ok(CommandHandled::Handled)
         },
     )));
@@ -218,17 +229,42 @@ fn main() -> Result<(), ForthError> {
     }
     rl.save_history("history.txt").unwrap();
 
-    run()?;
-
     Ok(())
 }
 
-fn run() -> Result<(), ForthError> {
-    let mut fc = ForthCompiler::new();
+fn enter_interactive_text() -> String {
+    let mut return_value = String::new();
 
-    //fc.execute_string("1 IF 1 2 ADD ELSE 3 4 ADD THEN", GasLimit::Limited(100))?;
-    fc.execute_string("0 IF 1 2 ADD THEN", GasLimit::Limited(100))?;
+    // `()` can be used when no completer is required
+    let mut rl = Editor::<()>::new();
+    if rl.load_history("history_forth_interactive.txt").is_err() {
+        println!("No previous history.");
+    }
+    loop {
+        let readline = rl.readline("i> ");
+        match readline {
+            Ok(line) => {
+                if line.is_empty() {
+                    return return_value;
+                }
+                rl.add_history_entry(line.as_str());
+                return_value.push_str(line.as_ref());
+            }
+            Err(ReadlineError::Interrupted) => {
+                println!("CTRL-C");
+                break;
+            }
+            Err(ReadlineError::Eof) => {
+                println!("CTRL-D");
+                break;
+            }
+            Err(err) => {
+                println!("Error: {:?}", err);
+                break;
+            }
+        }
+    }
+    rl.save_history("history_forth_interactive.txt").unwrap();
 
-    println!("Contents of Number Stack {:?}", fc.sm.st.number_stack);
-    Ok(())
+    return_value
 }
