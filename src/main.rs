@@ -244,9 +244,6 @@ fn enter_interactive_text() -> String {
         let readline = rl.readline("i> ");
         match readline {
             Ok(line) => {
-                if line.is_empty() {
-                    return return_value;
-                }
                 rl.add_history_entry(line.as_str());
                 return_value.push_str(line.as_ref());
             }
