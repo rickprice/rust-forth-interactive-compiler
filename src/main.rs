@@ -7,8 +7,91 @@ use rustyline::error::ReadlineError;
 use rustyline::Editor;
 use std::fs;
 
+pub enum CommandHandled {
+    Handled,
+    NotHandled,
+}
+
+// Chain of Command Pattern
+pub trait HandleCommand {
+    fn handle_command(
+        &mut self,
+        command_id: &str,
+        parameters: &[&str],
+        fc: &mut ForthCompiler,
+    ) -> Result<CommandHandled, ForthError>;
+    fn command_id(&self) -> String;
+    fn help_text(&self) -> String;
+}
+
+pub struct CommandHandler<'a> {
+    command_id: String,
+    help_text: String,
+    to_run:
+        Box<dyn Fn(&str, &[&str], &mut ForthCompiler) -> Result<CommandHandled, ForthError> + 'a>,
+}
+
+impl<'a> CommandHandler<'a> {
+    pub fn new<C>(command_id: &str, help_text: &str, f: C) -> CommandHandler<'a>
+    where
+        C: Fn(&str, &[&str], &mut ForthCompiler) -> Result<CommandHandled, ForthError> + 'a,
+    {
+        CommandHandler {
+            command_id: command_id.to_owned(),
+            help_text: help_text.to_owned(),
+            to_run: Box::new(f),
+        }
+    }
+}
+
+impl<'a> HandleCommand for CommandHandler<'a> {
+    fn handle_command(
+        &mut self,
+        command_id: &str,
+        parameters: &[&str],
+        fc: &mut ForthCompiler,
+    ) -> Result<CommandHandled, ForthError> {
+        if command_id == self.command_id {
+            return (self.to_run)(self.command_id.as_ref(), parameters, fc);
+        }
+        Ok(CommandHandled::NotHandled)
+    }
+
+    fn command_id(&self) -> String {
+        self.command_id.clone()
+    }
+
+    fn help_text(&self) -> String {
+        self.help_text.clone()
+    }
+}
+
 fn main() -> Result<(), ForthError> {
     println!("This is the rust-forth-interactive-compiler");
+
+    let mut fc = ForthCompiler::new();
+
+    let mut command_handlers: Vec<Box<dyn HandleCommand>> = Vec::new();
+    command_handlers.push(Box::from(CommandHandler::new(
+        "l",
+        "Load Forth file: file1.f [file2.f]",
+        |_command_id, params, fc| {
+            for n in params {
+                let startup = fs::read_to_string(n)?;
+                fc.execute_string(&startup, GasLimit::Limited(100))?;
+            }
+            Ok(CommandHandled::Handled)
+        },
+    )));
+
+    command_handlers.push(Box::from(CommandHandler::new(
+        "p",
+        "Print number stack: No Parameters",
+        |_command_id, _params, fc| {
+            println!("Number Stack {:?}", fc.sm.st.number_stack);
+            Ok(CommandHandled::Handled)
+        },
+    )));
 
     // `()` can be used when no completer is required
     let mut rl = Editor::<()>::new();
@@ -21,6 +104,33 @@ fn main() -> Result<(), ForthError> {
             Ok(line) => {
                 rl.add_history_entry(line.as_str());
                 println!("Line: {}", line);
+
+                // Okay, so we have a line, each line starts with a command, and then has optional parameters
+                let words: Vec<&str> = line.split_whitespace().collect();
+                // If nothing to talk about, just ignore...
+                if words.len() == 0 {
+                    continue;
+                }
+
+                let command = words[0];
+                let parameters = &words[1..];
+
+                // Try to handle the command here
+                let mut handled = false;
+                for h in command_handlers.iter_mut() {
+                    if let Ok(CommandHandled::Handled) =
+                        h.handle_command(command, parameters, &mut fc)
+                    {
+                        handled = true;
+                    }
+                }
+
+                if !handled {
+                    println!("Help text:");
+                    for h in command_handlers.iter() {
+                        println!("    Command: {} Usage: {}", h.command_id(), h.help_text());
+                    }
+                }
             }
             Err(ReadlineError::Interrupted) => {
                 println!("CTRL-C");
