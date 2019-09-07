@@ -281,6 +281,8 @@ fn enter_interactive_text() -> String {
             Ok(line) => {
                 rl.add_history_entry(line.as_str());
                 return_value.push_str(line.as_ref());
+                // We actually need to add newlines because they are needed by the compiler
+                return_value.push('\n');
             }
             Err(ReadlineError::Interrupted) => {
                 println!("CTRL-C");
