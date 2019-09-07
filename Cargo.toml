@@ -1,6 +1,6 @@
 [package]
 name = "rust-forth-interactive-compiler"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Frederick Price <rprice@pricemail.ca>"]
 edition = "2018"
 license = "MIT"
@@ -12,5 +12,5 @@ categories = ["embedded"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rust-forth-compiler = "0.3.1"
+rust-forth-compiler = "0.4.1"
 rustyline = "5.0.2"
