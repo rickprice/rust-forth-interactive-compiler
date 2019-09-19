@@ -112,7 +112,7 @@ impl From<std::io::Error> for ForthInteractiveError {
 fn main() -> Result<(), ForthError> {
     println!("This is the rust-forth-interactive-compiler");
 
-    let mut fc = ForthCompiler::new();
+    let mut fc = ForthCompiler::default();
 
     let mut command_handlers: Vec<Box<dyn HandleCommand>> = Vec::new();
 
