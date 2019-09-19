@@ -211,7 +211,7 @@ fn main() -> Result<(), ForthError> {
                 // Okay, so we have a line, each line starts with a command, and then has optional parameters
                 let words: Vec<&str> = line.split_whitespace().collect();
                 // If nothing to talk about, just ignore...
-                if words.len() == 0 {
+                if words.is_empty() {
                     continue;
                 }
 
