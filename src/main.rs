@@ -163,9 +163,15 @@ fn main() -> Result<(), ForthError> {
 
     command_handlers.push(Box::from(CommandHandler::new(
         "list_words",
-        "No parameters",
-        "List OpCodes that are compiled into memory",
-        |_command_id, _params, _fc| {
+        "Enter words you wish to list",
+        "List words that are compiled into memory",
+        |_command_id, params, fc| {
+            for w in params {
+                if let Some(offset) = fc.word_addresses.get(*w) {
+                    println!("Word: {} Location: {}", w, offset);
+                } else {
+                }
+            }
             /*
             for (key, value) in fc.word_addresses {
                 println!("Word: {} Location: {}", key, value);
