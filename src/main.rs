@@ -170,14 +170,15 @@ fn main() -> Result<(), ForthError> {
                 if let Some(offset) = fc.word_addresses.get(*w) {
                     println!("Word: {} Location: {}", w, offset);
                 } else {
+                    println!("Unable to find Word [{}] in dictionary.",w);
                 }
+                if let Some(original_forth) = fc.word_definitions.get(*w) {
+                    println!("Word: {} Forth: {}", w, original_forth);
+                } 
+                if let Some(opcodes) = fc.word_opcodes.get(*w) {
+                    println!("Word: {} Opcodes: {:?}", w, opcodes);
+                } 
             }
-            /*
-            for (key, value) in fc.word_addresses {
-                println!("Word: {} Location: {}", key, value);
-            }
-            */
-            //println!("Last compiled Opcode {:?}", fc.last_function);
             Ok(CommandHandled::Handled)
         },
     )));
