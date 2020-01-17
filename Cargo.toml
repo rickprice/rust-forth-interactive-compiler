@@ -14,4 +14,4 @@ categories = ["embedded"]
 [dependencies]
 #rust-forth-compiler = { version = "0.5.2", features = ['enable_reflection'] }
 rust-forth-compiler = { features = ['enable_reflection'] ,path="../rust-forth-compiler"}
-rustyline = "5.0.3"
+rustyline = "6.0.0"
